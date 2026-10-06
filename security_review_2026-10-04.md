@@ -17,6 +17,7 @@ v gitu nejsou. **Trackovaný je `docker/credentials.toml`** (43 B, jeden řádek
   tajemstvím a odmítnout nepodepsané soubory.
 
 ### 2. KRITICKÉ – path traversal session souborů přes `?session=` (pickle)
+- **Opraveno** v 3d9df55 (validace session ID, `secrets`, `realpath` uvnitř `session_save_dir`); pickle zůstává, viz bod 1.
 - `app_routing.py:50-51` vrací `session` z URL bez validace → `session_auto.py:472`
   (`os.path.join(CACHE_DIR, f"session_{username}_{provider}_{session_id}.pkl")`) → `finish.py:81` →
   `save_user_data` (`session_auto.py:449-456`) a `load_user_data` → `pickle.load` (`session_auto.py:68`).
@@ -27,6 +28,7 @@ v gitu nejsou. **Trackovaný je `docker/credentials.toml`** (43 B, jeden řádek
   (teď `random.choices`, `app_routing.py:55`); ověřit `realpath` uvnitř `session_save_dir`; nahradit pickle.
 
 ### 3. VYSOKÉ – admin konzole bez serverové kontroly role, běží před přihlášením
+- **Opraveno** v 116bcc8.
 - `app_routing.py:89-92` a `admin.py:510` (`console()`) kontrolují jen `_admin_console` v session;
   volá se v `app.py:258` před `setup_authenticator` / `check_user_access`.
 - Kdo dostane `_admin_console=True` do session (bod 4, obnova session bod 8), získá credentials report
@@ -37,6 +39,7 @@ v gitu nejsou. **Trackovaný je `docker/credentials.toml`** (43 B, jeden řádek
   `console()`; volání přesunout za autentizaci; při logoutu mazat `_admin_console`.
 
 ### 4. VYSOKÉ – `config.yaml` datasetu přepisuje libovolné klíče session state
+- **Opraveno** v 1a2ffed a 8fce20b.
 - `read_config.py:162-164` (blok `config:` nastaví libovolný klíč), `read_config.py:219-222`
   (`setup_raw_keys` přepíše každý existující klíč session, který je i v YAML).
 - Dataset s `roles: [admin]`, `permission: true`, `_admin_console: true`, `next_action`/`next_target`
@@ -45,6 +48,7 @@ v gitu nejsou. **Trackovaný je `docker/credentials.toml`** (43 B, jeden řádek
   datové klíče); nikdy auth/oprávnění ani klíče s `_`.
 
 ### 5. VYSOKÉ – editor konfigurace zapisuje bez kontroly oprávnění
+- **Opraveno** v 5c52a2c.
 - `pending_actions.py:198-200` volá `config_editor()` bez kontroly; zápisy `config_editor.py:1134-1135`
   (raw editor), `:1316`, `:1516`, helpery `:443`, `:483`, `:944`, `:1015`, `:1036`. Kontrolu má jen
   tlačítko `:1809`. Vstup bez kontroly: `common.py:146` (`is_tomogram_available(edit_buttons=True)`,
@@ -55,6 +59,7 @@ v gitu nejsou. **Trackovaný je `docker/credentials.toml`** (43 B, jeden řádek
   kontrola u každého zápisu.
 
 ### 6. VYSOKÉ – vlastnictví dat podle shody jména adresáře v cestě
+- **Opraveno** v 2a9129b.
 - `streamlit/__init__.py:94-97`: `username in selected_tree.split("/")[:-1]`; regex jmen
   `auth_patch.py:160` připouští `home`, `tmp`, `user_data`, `streamlit_data`.
 - Registrace jako `user_data` (nebo jiný adresář v absolutní cestě) → zápis do dat všech uživatelů
@@ -63,12 +68,14 @@ v gitu nejsou. **Trackovaný je `docker/credentials.toml`** (43 B, jeden řádek
   rezervovaná jména při registraci.
 
 ### 7. STŘEDNÍ – starý `file_manager` přes `next_action='edit_directory'` vždy zapisovatelný
+- **Opraveno** v 9e8497f.
 - `pending_actions.py:194-196` volá `file_manager(next_target)` s `readonly=False` bez kontroly.
   Vstupy: `read_config.py:127` → `streamlit/__init__.py:137-140` (tlačítko „Directory manager“ při
   chybě configu), `directory_manager.py:312,395`.
 - Oprava: `readonly=not test_user_edit_permission()`, `next_target` ověřit proti povoleným kořenům.
 
 ### 8. STŘEDNÍ – obnova session nefiltruje auth klíče ani `_`
+- **Opraveno** v 15ee822.
 - `session_auto.py:480-484` neodfiltruje `roles`, `username`, `authentication_status`, `permission`,
   klíče s `_` (při ukládání se `_` vyřazuje, `:436`). `configuration` (cfg vč. `passphrase`) se ukládá
   do pickle (`:435-443`).
@@ -76,16 +83,19 @@ v gitu nejsou. **Trackovaný je `docker/credentials.toml`** (43 B, jeden řádek
   auth klíče po obnově vždy znovu z autentizace.
 
 ### 9. STŘEDNÍ – „Create .zip“ bez kontroly oprávnění a kvóty
+- **Opraveno** v 644c1aa.
 - `app.py:205-209`: `shutil.make_archive(target_dir, 'zip', target_dir)` zapíše `<dataset>.zip`
   do nadřazeného adresáře (`shareddir`, `dirname`, `userdir`) i uživateli jen pro čtení; opakováním
   zaplní disk.
 - Oprava: archiv v paměti nebo `tempfile`, smazat po stažení, omezit velikost.
 
 ### 10. STŘEDNÍ – rozbalení ZIPu bez limitu (zip bomb)
+- **Opraveno** v b379408.
 - `ini_data.py:459`, `:486` (`extractall`). Zip slip ošetřuje `zipfile`, velikost a počet členů ne.
 - Oprava: sečíst `ZipInfo.file_size`, limit počtu souborů a kompresního poměru, kontrola kvóty.
 
 ### 11. NÍZKÉ – `?health` bez přihlášení prozrazuje informace
+- **Opraveno** v d64f0e7.
 - `app_routing.py:70-73`, `health.py:157-204`: verze Pythonu/OS/knihoven, existence `login.yaml`/
   `secrets.toml`, registrace, git commit.
 - Oprava: ven jen „OK“, detaily adminovi.
