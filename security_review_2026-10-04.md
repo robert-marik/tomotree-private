@@ -9,6 +9,7 @@ v gitu nejsou. **Trackovaný je `docker/credentials.toml`** (43 B, jeden řádek
 ## Potvrzené nálezy
 
 ### 1. KRITICKÉ – spuštění kódu přes `autoload.state` (pickle)
+- **Částečně opraveno**, filemanager odmítá state soubory, do budoucna HMAC podpis.
 - `src/tomotree/streamlit/session/state_manager.py:123,132` (`pickle.load` / `pickle.loads`), volá
   `optional_autoload()` (`state_manager.py:156`) z `app.py:318` pro každý otevřený dataset.
 - Uživatel nahraje ZIP/data s `autoload.state` (kořen nebo `state/`); při otevření se spustí libovolný kód
