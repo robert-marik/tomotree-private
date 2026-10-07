@@ -1,6 +1,6 @@
 # Ukládání nahraných souborů do typových podadresářů datové sady
 
-Datum: 2026-09-25 · větev `docasna-vetev` · necommitováno
+Bylo aplikováno.
 
 ## Proč
 
